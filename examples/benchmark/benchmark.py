@@ -1,26 +1,28 @@
 import os
-import nengo
+# import nengo
 import torch
 import argparse
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from brian2 import *
-from nest import *
+# from brian2 import *
+# from nest import *
 from time import time as t
-from experiments import ROOT_DIR
+# from experiments import ROOT_DIR
+# from bindsnet import ROOT_DIR
+ROOT_DIR = "/root/bindsnet"
 
-import brian2genn
+# import brian2genn
 
 from bindsnet.network import Network
 from bindsnet.network.topology import Connection
-from bindsnet.network.nodes import Input, LIFNodes
+from bindsnet.network.nodes import Input, LIFNodes, HodgkinHuxleyNodes
 from bindsnet.encoding import poisson
 
-from experiments.benchmark import plot_benchmark
+# from experiments.benchmark import plot_benchmark
 
-plots_path = os.path.join(ROOT_DIR, "figures")
+# plots_path = os.path.join(ROOT_DIR, "figures")
 benchmark_path = os.path.join(ROOT_DIR, "benchmark")
 if not os.path.isdir(benchmark_path):
     os.makedirs(benchmark_path)
@@ -30,6 +32,7 @@ torch.set_default_tensor_type("torch.cuda.FloatTensor")
 x = torch.rand(1000)
 del x
 
+ms = 1
 # BRIAN2 clock
 defaultclock = 1.0 * ms
 
@@ -43,7 +46,8 @@ def BindsNET_cpu(n_neurons, time):
 
     network = Network()
     network.add_layer(Input(n=n_neurons), name="X")
-    network.add_layer(LIFNodes(n=n_neurons), name="Y")
+    # network.add_layer(LIFNodes(n=n_neurons), name="Y")
+    network.add_layer(HodgkinHuxleyNodes(n=n_neurons), name="Y")
     network.add_connection(
         Connection(source=network.layers["X"], target=network.layers["Y"]),
         source="X",
@@ -188,11 +192,11 @@ def main(start=100, stop=1000, step=100, time=1000, interval=100, plot=False):
 
     times = {
         "BindsNET_cpu": [],
-        "BindsNET_gpu": [],
-        "BRIAN2": [],
-        "BRIAN2GENN": [],
-        "BRIAN2GENN comp.": [],
-        "PyNEST": [],  # , 'Nengo': []
+        # "BindsNET_gpu": [],
+        # "BRIAN2": [],
+        # "BRIAN2GENN": [],
+        # "BRIAN2GENN comp.": [],
+        # "PyNEST": [],  # , 'Nengo': []
     }
 
     for n_neurons in range(start, stop + step, step):
@@ -227,9 +231,9 @@ def main(start=100, stop=1000, step=100, time=1000, interval=100, plot=False):
 
     df.to_csv(f)
 
-    plot_benchmark.main(
-        start=start, stop=stop, step=step, time=time, interval=interval, plot=plot
-    )
+    # plot_benchmark.main(
+    #     start=start, stop=stop, step=step, time=time, interval=interval, plot=plot
+    # )
 
 
 if __name__ == "__main__":

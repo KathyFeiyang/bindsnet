@@ -1699,3 +1699,165 @@ class SRM0Nodes(Nodes):
         super().set_batch_size(batch_size=batch_size)
         self.v = self.rest * torch.ones(batch_size, *self.shape, device=self.v.device)
         self.refrac_count = torch.zeros_like(self.v, device=self.refrac_count.device)
+
+class HodgkinHuxleyNodes(Nodes):
+    # language=rst
+    """
+    Layer of Hodgkin Huxley neurons
+    """
+
+    def __init__(
+        self,
+        n: Optional[int] = None,
+        shape: Optional[Iterable[int]] = None,
+        traces: bool = False,
+        traces_additive: bool = False,
+        tc_trace: Union[float, torch.Tensor] = 20.0,
+        trace_scale: Union[float, torch.Tensor] = 1.0,
+        sum_input: bool = False,
+        tc_decay: Union[float, torch.Tensor] = 100.0,
+        rest: Union[float, torch.Tensor] = -65.0,
+
+        g_K: Union[float, torch.Tensor] = 36.0,
+        g_Na: Union[float, torch.Tensor] = 120.0,
+        g_l: Union[float, torch.Tensor] = 0.3,
+        E_K: Union[float, torch.Tensor] = -12.0,
+        E_Na: Union[float, torch.Tensor] = 115.0,
+        E_l: Union[float, torch.Tensor] = 10.6,
+        Vprev1: Union[float, torch.Tensor] = -65.0,
+        Vprev2: Union[float, torch.Tensor] = -65.0,
+        n2: Union[float, torch.Tensor] = 0.5,
+        m: Union[float, torch.Tensor] = 0.5,
+        h: Union[float, torch.Tensor] = 0.06,
+        **kwargs,
+    ) -> None:
+        # language=rst
+        """
+        Instantiates a layer of LIF neurons.
+
+        :param n: The number of neurons in the layer.
+        :param shape: The dimensionality of the layer.
+        :param traces: Whether to record spike traces.
+        :param traces_additive: Whether to record spike traces additively.
+        :param tc_trace: Time constant of spike trace decay.
+        :param trace_scale: Scaling factor for spike trace.
+        :param sum_input: Whether to sum all inputs.
+        """
+        super().__init__(
+            n=n,
+            shape=shape,
+            traces=traces,
+            traces_additive=traces_additive,
+            tc_trace=tc_trace,
+            trace_scale=trace_scale,
+            sum_input=sum_input,
+        )
+
+        self.register_buffer("v", torch.FloatTensor())  # Neuron voltages.
+        self.register_buffer(
+            "tc_decay", torch.tensor(tc_decay, dtype=torch.float)
+        )  # Time constant of neuron voltage decay.
+        self.register_buffer("rest", torch.tensor(rest))  # Rest voltage.
+        self.register_buffer(
+            "g_K", torch.tensor(g_K, dtype=torch.float)
+        )
+        self.register_buffer(
+            "g_Na", torch.tensor(g_Na, dtype=torch.float)
+        )
+        self.register_buffer(
+            "g_l", torch.tensor(g_l, dtype=torch.float)
+        )
+        self.register_buffer(
+            "E_K", torch.tensor(E_K, dtype=torch.float)
+        )
+        self.register_buffer(
+            "E_Na", torch.tensor(E_Na, dtype=torch.float)
+        )
+        self.register_buffer(
+            "E_l", torch.tensor(E_l, dtype=torch.float)
+        )
+        self.register_buffer(
+            "Vprev1", torch.tensor(Vprev1, dtype=torch.float)
+        )
+        self.register_buffer(
+            "Vprev2", torch.tensor(Vprev2, dtype=torch.float)
+        )
+        self.register_buffer(
+            "n2", torch.tensor(n2, dtype=torch.float)
+        )
+        self.register_buffer(
+            "m", torch.tensor(m, dtype=torch.float)
+        )
+        self.register_buffer(
+            "h", torch.tensor(h, dtype=torch.float)
+        )
+
+    def forward(self, x: torch.Tensor) -> None:
+        # language=rst
+        """
+        Runs a single simulation step.
+
+        :param x: Inputs to the layer.
+        """
+        self.I = x
+
+        self.Vprev2 = self.Vprev1
+        self.Vprev1 = self.v
+
+        a_m = (25.0 - self.v) / (10.0 * (torch.exp((25.0 - self.v) / 10.0) - 1.0))
+        a_n = (10.0 - self.v) / (100.0 * (torch.exp((10.0 - self.v) / 10.0) - 1.0))
+        a_h = 0.07 * torch.exp(-self.v / 20.0)
+
+        b_m = 4.0 * torch.exp(-1.0 * self.v / 18.0)
+        b_n = 0.125 * torch.exp(-1.0 * self.v / 80.0)
+        b_h = 1.0 / (torch.exp((30.0 - self.v) / 10.0) + 1.0)
+
+        n2 = self.n2 + self.dt * (a_n * (1.0 - self.n2) - b_n * self.n2)
+        m = self.m + self.dt * (a_m * (1.0 - self.m) - b_m * self.m)
+        h = self.h + self.dt * (a_h * (1.0 - self.h) - b_h * self.h)
+        self.m = m
+        self.n2 = n2
+        self.h = h
+
+        I_K = self.g_K * torch.exp(4 * torch.log(self.n2)) * (self.v - self.E_K)
+        I_Na = self.g_Na * torch.exp(3 * torch.log(self.m)) * h * (self.v - self.E_Na)
+        I_l = self.g_l * (self.v - self.E_l)
+        I_channels = I_K + I_Na + I_l
+        V = self.v + self.dt * (self.I - I_channels)
+        self.v = V
+
+        self.s = (torch.median(self.Vprev1) >= torch.median(self.v)) and \
+                (torch.median(self.Vprev2) < torch.median(self.Vprev1)) and \
+                (torch.median(self.v) >= -30.0)
+
+        super().forward(x)
+
+    def reset_state_variables(self) -> None:
+        # language=rst
+        """
+        Resets relevant state variables.
+        """
+        super().reset_state_variables()
+        self.v.fill_(self.rest)  # Neuron voltages.
+        # self.refrac_count.zero_()  # Refractory period counters.
+
+    def compute_decays(self, dt) -> None:
+        # language=rst
+        """
+        Sets the relevant decays.
+        """
+        super().compute_decays(dt=dt)
+        self.decay = torch.exp(
+            -self.dt / self.tc_decay
+        )  # Neuron voltage decay (per timestep).
+
+    def set_batch_size(self, batch_size) -> None:
+        # language=rst
+        """
+        Sets mini-batch size. Called when layer is added to a network.
+
+        :param batch_size: Mini-batch size.
+        """
+        super().set_batch_size(batch_size=batch_size)
+        self.v = self.rest * torch.ones(batch_size, *self.shape, device=self.v.device)
+        # self.refrac_count = torch.zeros_like(self.v, device=self.refrac_count.device)
