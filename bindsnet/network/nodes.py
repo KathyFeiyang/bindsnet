@@ -1826,9 +1826,9 @@ class HodgkinHuxleyNodes(Nodes):
         V = self.v + self.dt * (self.I - I_channels)
         self.v = V
 
-        self.s = (torch.median(self.Vprev1) >= torch.median(self.v)) and \
-                (torch.median(self.Vprev2) < torch.median(self.Vprev1)) and \
-                (torch.median(self.v) >= -30.0)
+        self.s = torch.logical_and(
+                torch.logical_and(self.Vprev1 >= self.v, self.Vprev2 < self.Vprev1),
+                self.v >= -30.0)
 
         super().forward(x)
 
