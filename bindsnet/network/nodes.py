@@ -488,7 +488,7 @@ class LIFNodes(Nodes):
         )  # Set in compute_decays.
         self.register_buffer("v", torch.FloatTensor())  # Neuron voltages.
         self.register_buffer(
-            "refrac_count", torch.FloatTensor()
+            "refrac_count", torch.FloatTensor().cuda()
         )  # Refractory period counters.
 
         if lbound is None:
@@ -509,7 +509,7 @@ class LIFNodes(Nodes):
         self.v = self.decay * (self.v - self.rest) + self.rest
 
         # Integrate inputs.
-        x.masked_fill_(self.refrac_count > 0, 0.0)
+        x.masked_fill_(self.refrac_count.cuda() > 0, 0.0)
 
         # Decrement refractory counters.
         self.refrac_count -= self.dt
@@ -556,7 +556,7 @@ class LIFNodes(Nodes):
         :param batch_size: Mini-batch size.
         """
         super().set_batch_size(batch_size=batch_size)
-        self.v = self.rest * torch.ones(batch_size, *self.shape, device=self.v.device)
+        self.v = self.rest * torch.ones(batch_size, *self.shape, device=self.v.device).cuda()
         self.refrac_count = torch.zeros_like(self.v, device=self.refrac_count.device)
 
 

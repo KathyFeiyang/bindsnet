@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from time import time as t
 # from experiments import ROOT_DIR
 # from bindsnet import ROOT_DIR
-ROOT_DIR = "/root/bindsnet"
+ROOT_DIR = "bindsnet/examples/benchmark"
 
 # import brian2genn
 

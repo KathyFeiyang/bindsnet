@@ -236,7 +236,7 @@ class Network(torch.nn.Module):
                     else:
                         inputs[c[1]] = torch.zeros(
                             self.batch_size, *target.shape, device=target.s.device
-                        )
+                        ).cuda()
 
                 # Add to input: source's spikes multiplied by connection weights.
                 if isinstance(target, CSRMNodes):

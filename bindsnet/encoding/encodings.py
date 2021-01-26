@@ -136,7 +136,7 @@ def poisson(
     else:
         # Compute firing rates in seconds as function of data intensity,
         # accounting for simulation time step.
-        rate = torch.zeros(size, device=device)
+        rate = torch.zeros(size, device=device).cuda()
         rate[datum != 0] = 1 / datum[datum != 0] * (1000 / dt)
 
         # Create Poisson distribution and sample inter-spike intervals

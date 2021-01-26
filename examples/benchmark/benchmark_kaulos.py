@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from time import time as t
 # from experiments import ROOT_DIR
 # from bindsnet import ROOT_DIR
-ROOT_DIR = ""
+ROOT_DIR = "bindsnet/examples/benchmark"
 
 from bindsnet.network import Network
 from bindsnet.network.topology import Connection
@@ -23,9 +23,9 @@ if not os.path.isdir(benchmark_path):
     os.makedirs(benchmark_path)
 
 # "Warm up" the GPU.
-# torch.set_default_tensor_type("torch.cuda.FloatTensor")
-# x = torch.rand(1000)
-# del x
+torch.set_default_tensor_type("torch.cuda.FloatTensor")
+x = torch.rand(1000)
+del x
 
 ms = 1
 defaultclock = 1.0 * ms
@@ -149,10 +149,10 @@ def main(start=100, stop=1000, step=100, time=1000, interval=100, plot=False):
     n_neurons = 1024
 
     times = {
-        "dense_LIF_cpu": [],
-        "dense_connected_LIF_cpu": [],
         # "dense_LIF_cpu": [],
-        # "dense_connected_LIF_gpu": []
+        # "dense_connected_LIF_cpu": [],
+        "dense_LIF_gpu": [],
+        "dense_connected_LIF_gpu": []
     }
 
     print(f"\nRunning benchmark with {n_neurons} neurons.")
