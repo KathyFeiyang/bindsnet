@@ -11,6 +11,7 @@ from time import time as t
 ROOT_DIR = "bindsnet/examples/benchmark"
 
 from bindsnet.network import Network
+from bindsnet.network.monitors import Monitor
 from bindsnet.network.topology import Connection
 from bindsnet.network.nodes import Input, LIFNodes
 from bindsnet.encoding import poisson
@@ -47,13 +48,16 @@ def dense_LIF_cpu(n_inputs, n_neurons, time):
 
     network = Network()
     network.add_layer(Input(n=n_inputs), name="input")
-    network.add_layer(LIFNodes(n=n_neurons), name="LIF")
+    lif_layer = LIFNodes(n=n_neurons)
+    network.add_layer(lif_layer, name="LIF")
     network.add_connection(
         Connection(source=network.layers["input"], target=network.layers["LIF"]),
         source="input",
         target="LIF",
     )
-
+    m = Monitor(obj=lif_layer, state_vars=["s", "v"])
+    network.add_monitor(monitor=m, name='LIF')
+    
     data = {"X": poisson(datum=torch.rand(n_neurons), time=time)}
     network.run(inputs=data, time=time)
 
@@ -69,7 +73,8 @@ def dense_connected_LIF_cpu(n_inputs, n_neurons, time):
 
     network = Network()
     network.add_layer(Input(n=n_inputs), name="input")
-    network.add_layer(LIFNodes(n=n_neurons), name="LIF")
+    lif_layer = LIFNodes(n=n_neurons)
+    network.add_layer(lif_layer, name="LIF")
     network.add_connection(
         Connection(source=network.layers["input"], target=network.layers["LIF"]),
         source="input",
@@ -81,6 +86,8 @@ def dense_connected_LIF_cpu(n_inputs, n_neurons, time):
         source="LIF",
         target="LIF",
     )
+    m = Monitor(obj=lif_layer, state_vars=["s", "v"])
+    network.add_monitor(monitor=m, name='LIF')
 
     data = {"X": poisson(datum=torch.rand(n_neurons), time=time)}
     network.run(inputs=data, time=time)
@@ -98,12 +105,15 @@ def dense_LIF_gpu(n_inputs, n_neurons, time):
 
         network = Network()
         network.add_layer(Input(n=n_inputs), name="input")
-        network.add_layer(LIFNodes(n=n_neurons), name="LIF")
+        lif_layer = LIFNodes(n=n_neurons)
+        network.add_layer(lif_layer, name="LIF")
         network.add_connection(
             Connection(source=network.layers["input"], target=network.layers["LIF"]),
             source="input",
             target="LIF",
         )
+        m = Monitor(obj=lif_layer, state_vars=["s", "v"])
+        network.add_monitor(monitor=m, name='LIF')
 
         data = {"X": poisson(datum=torch.rand(n_neurons), time=time)}
         network.run(inputs=data, time=time)
@@ -121,7 +131,8 @@ def dense_connected_LIF_gpu(n_inputs, n_neurons, time):
 
         network = Network()
         network.add_layer(Input(n=n_inputs), name="input")
-        network.add_layer(LIFNodes(n=n_neurons), name="LIF")
+        lif_layer = LIFNodes(n=n_neurons)
+        network.add_layer(lif_layer, name="LIF")
         network.add_connection(
             Connection(source=network.layers["input"], target=network.layers["LIF"]),
             source="input",
@@ -133,6 +144,9 @@ def dense_connected_LIF_gpu(n_inputs, n_neurons, time):
             source="LIF",
             target="LIF",
         )
+
+        m = Monitor(obj=lif_layer, state_vars=["s", "v"])
+        network.add_monitor(monitor=m, name='LIF')
 
         data = {"X": poisson(datum=torch.rand(n_neurons), time=time)}
         network.run(inputs=data, time=time)
